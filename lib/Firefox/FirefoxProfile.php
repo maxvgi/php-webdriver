@@ -123,18 +123,33 @@ class FirefoxProfile
     }
 
     /**
+     * @param array $preferences
+     * @return string
+     */
+    public static function generateUserPreferencesFile($preferences) {
+        $content = "";
+        foreach ($preferences as $key => $value) {
+            if($value===false) {
+                $value='false';
+            }
+            $content .= sprintf("user_pref(\"%s\", %s);\n", $key, $value);
+        }
+        return $content;
+    }
+
+    /**
      * @return string
      */
     public function encode()
     {
-        $temp_dir = $this->createTempDirectory('WebDriverFirefoxProfile');
+        $temp_dir = static::createTempDirectory('WebDriverFirefoxProfile');
 
         if (isset($this->rdf_file)) {
             copy($this->rdf_file, $temp_dir . DIRECTORY_SEPARATOR . 'mimeTypes.rdf');
         }
 
         foreach ($this->extensions as $extension) {
-            $this->installExtension($extension, $temp_dir);
+            static::installExtension($extension, $temp_dir);
         }
 
         foreach ($this->extensions_datas as $dirname => $extension_datas) {
@@ -155,11 +170,10 @@ class FirefoxProfile
             }
         }
 
-        $content = '';
-        foreach ($this->preferences as $key => $value) {
-            $content .= sprintf("user_pref(\"%s\", %s);\n", $key, $value);
-        }
-        file_put_contents($temp_dir . '/user.js', $content);
+        file_put_contents(
+            $temp_dir . '/user.js',
+            static::generateUserPreferencesFile($this->preferences)
+        );
 
         $zip = new ZipArchive();
         $temp_zip = tempnam(sys_get_temp_dir(), 'WebDriverFirefoxProfileZip');
@@ -187,7 +201,7 @@ class FirefoxProfile
         $profile = base64_encode(file_get_contents($temp_zip));
 
         // clean up
-        $this->deleteDirectory($temp_dir);
+        static::deleteDirectory($temp_dir);
         unlink($temp_zip);
 
         return $profile;
@@ -198,11 +212,11 @@ class FirefoxProfile
      * @param string $profile_dir The path to the profile directory.
      * @return string The path to the directory of this extension.
      */
-    private function installExtension($extension, $profile_dir)
+    public static function installExtension($extension, $profile_dir)
     {
-        $temp_dir = $this->createTempDirectory();
+        $temp_dir = static::createTempDirectory();
 
-        $this->extractTo($extension, $temp_dir);
+        static::extractTo($extension, $temp_dir);
 
         $mozilla_rsa_path = $temp_dir . '/META-INF/mozilla.rsa';
         $mozilla_rsa_binary_data = file_get_contents($mozilla_rsa_path);
@@ -233,7 +247,7 @@ class FirefoxProfile
             throw new WebDriverException('Cannot install extension. Cannot fetch extension commonName');
         }
 
-        $this->deleteDirectory($temp_dir);
+        static::deleteDirectory($temp_dir);
 
         //install extension to profile directory
         $ext_dir = $profile_dir . '/extensions/';
@@ -254,7 +268,7 @@ class FirefoxProfile
      * @throws WebDriverException
      * @return string The path to the temp directory created.
      */
-    private function createTempDirectory($prefix = '')
+    private static function createTempDirectory($prefix = '')
     {
         $temp_dir = tempnam(sys_get_temp_dir(), $prefix);
         if (file_exists($temp_dir)) {
@@ -271,7 +285,7 @@ class FirefoxProfile
     /**
      * @param string $directory The path to the directory.
      */
-    private function deleteDirectory($directory)
+    private static function deleteDirectory($directory)
     {
         $dir = new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS);
         $paths = new RecursiveIteratorIterator($dir, RecursiveIteratorIterator::CHILD_FIRST);
@@ -294,7 +308,7 @@ class FirefoxProfile
      * @throws \Exception
      * @return FirefoxProfile
      */
-    private function extractTo($xpi, $target_dir)
+    private static function extractTo($xpi, $target_dir)
     {
         $zip = new ZipArchive();
         if (file_exists($xpi)) {
@@ -307,7 +321,5 @@ class FirefoxProfile
         } else {
             throw new \Exception("Firefox extension doesn't exist. '$xpi'");
         }
-
-        return $this;
     }
 }
