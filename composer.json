@@ -33,15 +33,7 @@
     "ext-SimpleXML": "For Firefox profile creation"
   },
   "autoload": {
-    "psr-4": {
-      "Facebook\\WebDriver\\": "lib/"
-    }
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "Facebook\\WebDriver\\": ["tests/unit", "tests/functional"]
-    },
-    "classmap": ["tests/functional/"]
+    "classmap": ["lib/"]
   },
   "scripts": {
     "codestyle:check": [
